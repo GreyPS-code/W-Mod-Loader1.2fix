@@ -79,7 +79,7 @@ public class ModResourcePack extends AbstractPackResources {
                         net.minecraft.resources.Identifier.fromNamespaceAndPath(namespace, remaining);
                 output.accept(loc, () -> is);
             }
-        } catch (Exception _) {
+        } catch (Exception e) {
         }
     }
 
