@@ -60,11 +60,4 @@ public final class ModLoader {
         tabEvent.getPending().forEach(CreativeTabEventCache::put);
         WLogger.info("[ModLoader] Bootstrap phase complete.");
     }
-
-    /**
-     * 在 MinecraftServer.runServer() atHead 调用
-     */
-    public static void onMinecraftInit() {
-        WLogger.info("[ModLoader] Server starting...");
-    }
 }

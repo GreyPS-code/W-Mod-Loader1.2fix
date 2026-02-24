@@ -4,14 +4,14 @@ import com.wzz.w_loader.event.Event;
 import net.minecraft.world.entity.Entity;
 
 public class EntityDiscardEvent extends Event {
-    private final Object entity;
+    private final Entity entity;
 
-    public EntityDiscardEvent(Object entity) {
+    public EntityDiscardEvent(Entity entity) {
         this.entity = entity;
     }
 
     @Override
     public boolean isCancellable() { return true; }
 
-    public Entity getEntity() { return (Entity) entity; }
+    public Entity getEntity() { return entity; }
 }

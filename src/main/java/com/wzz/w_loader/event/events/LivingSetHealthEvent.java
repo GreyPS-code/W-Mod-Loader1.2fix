@@ -4,10 +4,10 @@ import com.wzz.w_loader.event.Event;
 import net.minecraft.world.entity.LivingEntity;
 
 public class LivingSetHealthEvent extends Event {
-    private final Object entity;
+    private final LivingEntity entity;
     private float value;
 
-    public LivingSetHealthEvent(Object entity, float value) {
+    public LivingSetHealthEvent(LivingEntity entity, float value) {
         this.entity = entity;
         this.value = value;
     }
@@ -15,7 +15,7 @@ public class LivingSetHealthEvent extends Event {
     @Override
     public boolean isCancellable() { return true; }
 
-    public LivingEntity getEntity() { return (LivingEntity) entity; }
+    public LivingEntity getEntity() { return entity; }
     public float getValue() { return value; }
     public void setValue(float value) { this.value = value; }
 }

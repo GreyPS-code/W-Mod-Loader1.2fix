@@ -1,5 +1,7 @@
 package com.wzz.w_loader.transform;
 
+import com.wzz.w_loader.event.EventBus;
+import com.wzz.w_loader.event.events.TransformEvent;
 import com.wzz.w_loader.logger.WLogger;
 
 import java.lang.instrument.ClassFileTransformer;
@@ -16,11 +18,14 @@ public class WClassTransformer implements ClassFileTransformer {
             ProtectionDomain protectionDomain,
             byte[] classfileBuffer) {
 
-        if (className == null) return classfileBuffer;
+        if (className == null || className.startsWith("com/wzz/w_loader/")) return classfileBuffer;
 
         List<IClassTransformer> transformers = TransformerRegistry.getInstance().getTransformers();
         byte[] result = classfileBuffer;
-
+        TransformEvent transformEvent = new TransformEvent(loader, className, classBeingRedefined, result);
+        EventBus.INSTANCE.post(transformEvent);
+        if (result != transformEvent.getClassFileBuffer())
+            result = transformEvent.getClassFileBuffer();
         for (IClassTransformer transformer : transformers) {
             String target = transformer.targetClass();
             // target == null 表示该 transformer 处理所有类（如 AccessTransformer）

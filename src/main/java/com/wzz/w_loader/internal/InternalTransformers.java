@@ -33,6 +33,8 @@ public final class InternalTransformers {
             "net/minecraft/client/gui/GuiGraphics",
             "net/minecraft/client/multiplayer/ClientPacketListener",
             "net/minecraft/CrashReport",
+            "net/minecraft/client/gui/Gui",
+            "net/minecraft/world/entity/item/ItemEntity",
     };
 
     public static void registerAll() {

@@ -11,6 +11,8 @@ import java.util.List;
 public final class HookDispatcher {
 
     private static final ThreadLocal<Object[]> WRITEBACK = new ThreadLocal<>();
+    private static final ThreadLocal<Object>   RETURN_VALUE     = new ThreadLocal<>();
+    private static final ThreadLocal<Boolean>  RETURN_VALUE_SET = new ThreadLocal<>();
 
     public static boolean dispatch(String className, String methodName,
                                    String descriptor, String position,
@@ -31,18 +33,30 @@ public final class HookDispatcher {
             }
         }
 
-        // HEAD 且未取消时，把 args 存起来供 transformer 写回
         if (pos == HookPoint.Position.HEAD && !ctx.isCancelled()) {
             WRITEBACK.set(args);
+        }
+
+        if (pos == HookPoint.Position.TAIL && ctx.isReturnValueSet()) {
+            RETURN_VALUE.set(ctx.getReturnValue());
+            RETURN_VALUE_SET.set(Boolean.TRUE);
         }
 
         return ctx.isCancelled();
     }
 
-    /** transformer 在 HEAD dispatch 之后立即调用，拿回可能被修改的 args */
     public static Object[] getAndClearWriteBack() {
         Object[] v = WRITEBACK.get();
         WRITEBACK.remove();
+        return v;
+    }
+
+    public static Object getAndClearReturnValue() {
+        Boolean set = RETURN_VALUE_SET.get();
+        RETURN_VALUE_SET.remove();
+        if (set == null || !set) return null;
+        Object v = RETURN_VALUE.get();
+        RETURN_VALUE.remove();
         return v;
     }
 }

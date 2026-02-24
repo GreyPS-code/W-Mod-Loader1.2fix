@@ -6,14 +6,14 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 
 public class EntityKillEvent extends Event {
-    private final Object entity;
+    private final Entity entity;
 
-    public EntityKillEvent(Object entity) {
+    public EntityKillEvent(Entity entity) {
         this.entity = entity;
     }
 
     @Override
     public boolean isCancellable() { return true; }
 
-    public Entity getEntity() { return (Entity) entity; }
+    public Entity getEntity() { return entity; }
 }

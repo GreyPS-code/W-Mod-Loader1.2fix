@@ -1,7 +1,7 @@
 package com.wzz.w_loader.internal.transformer;
 
 import com.wzz.w_loader.asm.SafeClassWriter;
-import com.wzz.w_loader.internal.library.objectweb.asm.*;
+import com.wzz.w_loader.api.asm.*;
 import com.wzz.w_loader.transform.IClassTransformer;
 
 import java.io.BufferedReader;

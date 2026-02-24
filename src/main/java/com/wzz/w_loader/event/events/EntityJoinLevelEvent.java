@@ -5,10 +5,10 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 
 public class EntityJoinLevelEvent extends Event {
-    private final Object serverLevel;
-    private final Object entity;
+    private final ServerLevel serverLevel;
+    private final Entity entity;
 
-    public EntityJoinLevelEvent(Object serverLevel, Object entity) {
+    public EntityJoinLevelEvent(ServerLevel serverLevel, Entity entity) {
         this.serverLevel = serverLevel;
         this.entity = entity;
     }
@@ -16,7 +16,7 @@ public class EntityJoinLevelEvent extends Event {
     @Override
     public boolean isCancellable() { return true; }
 
-    public Entity getEntity() { return (Entity) entity; }
+    public Entity getEntity() { return entity; }
 
-    public ServerLevel getLevel() { return (ServerLevel) serverLevel; }
+    public ServerLevel getLevel() { return serverLevel; }
 }

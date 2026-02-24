@@ -1,6 +1,6 @@
 package com.wzz.w_loader.hook;
 
-import com.wzz.w_loader.internal.library.objectweb.asm.*;
+import com.wzz.w_loader.api.asm.*;
 
 public class HookScanner {
 

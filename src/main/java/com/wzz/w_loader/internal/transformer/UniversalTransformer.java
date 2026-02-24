@@ -3,7 +3,7 @@ package com.wzz.w_loader.internal.transformer;
 import com.wzz.w_loader.asm.SafeClassWriter;
 import com.wzz.w_loader.hook.HookManager;
 import com.wzz.w_loader.hook.HookPoint;
-import com.wzz.w_loader.internal.library.objectweb.asm.*;
+import com.wzz.w_loader.api.asm.*;
 import com.wzz.w_loader.transform.IClassTransformer;
 
 import java.util.HashMap;
@@ -35,17 +35,26 @@ public class UniversalTransformer implements IClassTransformer {
         Map<String, Integer> methodMaxLocals = new HashMap<>();
         boolean hasAnyInvoke = points.stream()
                 .anyMatch(p -> p.position == HookPoint.Position.INVOKE);
+        boolean hasAnyTailReturn = points.stream()
+                .anyMatch(p -> p.position == HookPoint.Position.TAIL);
 
-        if (hasAnyInvoke) {
+        if (hasAnyInvoke || hasAnyTailReturn) {
             cr.accept(new ClassVisitor(Opcodes.ASM9) {
                 @Override
                 public MethodVisitor visitMethod(int access, String name, String desc,
                                                  String sig, String[] ex) {
-                    boolean needs = points.stream().anyMatch(p ->
+                    boolean needsInvoke = points.stream().anyMatch(p ->
                             p.position == HookPoint.Position.INVOKE &&
-                            p.methodName.equals(name) &&
-                            (p.descriptor == null || p.descriptor.equals(desc)));
-                    if (!needs) return null;
+                                    p.methodName.equals(name) &&
+                                    (p.descriptor == null || p.descriptor.equals(desc)));
+
+                    boolean needsTail = points.stream().anyMatch(p ->
+                            p.position == HookPoint.Position.TAIL &&
+                                    p.methodName.equals(name) &&
+                                    (p.descriptor == null || p.descriptor.equals(desc))) &&
+                            Type.getReturnType(desc).getSort() != Type.VOID; // 只有非 void 才需要
+
+                    if (!needsInvoke && !needsTail) return null;
                     return new MethodVisitor(Opcodes.ASM9) {
                         @Override
                         public void visitMaxs(int maxStack, int maxLocals) {
@@ -296,12 +305,47 @@ public class UniversalTransformer implements IClassTransformer {
                                 writeSlot += t.getSize();
                             }
                             mv.visitInsn(Opcodes.POP);
-                        } else {
+                        } else { // TAIL
+                            // dispatch 结果（boolean isCancelled）已经在栈上，POP 掉
                             mv.visitInsn(Opcodes.POP);
+
+                            if (returnType.getSort() != Type.VOID) {
+                                // 拿返回值覆盖
+                                mv.visitMethodInsn(Opcodes.INVOKESTATIC,
+                                        "com/wzz/w_loader/hook/HookDispatcher",
+                                        "getAndClearReturnValue",
+                                        "()Ljava/lang/Object;",
+                                        false);
+
+                                Label noOverride = new Label();
+                                Label done       = new Label();
+
+                                mv.visitInsn(Opcodes.DUP);
+                                mv.visitJumpInsn(Opcodes.IFNULL, noOverride);
+
+                                // 有覆盖值：unbox，然后把原返回值（栈底）弹掉
+                                unboxReturnValue(returnType);          // 新方法，见下面
+                                // 此时栈：[新返回值, 原返回值]，需要把原返回值去掉
+                                if (returnType.getSize() == 2) {
+                                    // long/double：新值占两槽 → DUP2_X1 + POP
+                                    mv.visitInsn(Opcodes.DUP2_X1);
+                                    mv.visitInsn(Opcodes.POP2);
+                                    mv.visitInsn(Opcodes.POP);
+                                } else {
+                                    // 其他：新值占一槽 → SWAP + POP
+                                    mv.visitInsn(Opcodes.SWAP);
+                                    mv.visitInsn(Opcodes.POP);
+                                }
+                                mv.visitJumpInsn(Opcodes.GOTO, done);
+
+                                // 无覆盖值：pop 那个 null，栈上还是原来的返回值
+                                mv.visitLabel(noOverride);
+                                mv.visitInsn(Opcodes.POP);
+
+                                mv.visitLabel(done);
+                            }
                         }
                     }
-
-                    // ── 工具方法 ─────────────────────────────────────────────
 
                     private void pushInt(int value) {
                         if      (value == 0)     mv.visitInsn(Opcodes.ICONST_0);
@@ -313,6 +357,28 @@ public class UniversalTransformer implements IClassTransformer {
                         else if (value <= 127)   mv.visitIntInsn(Opcodes.BIPUSH, value);
                         else if (value <= 32767) mv.visitIntInsn(Opcodes.SIPUSH, value);
                         else                     mv.visitLdcInsn(value);
+                    }
+
+                    private void unboxReturnValue(Type returnType) {
+                        switch (returnType.getSort()) {
+                            case Type.BOOLEAN -> { mv.visitTypeInsn(Opcodes.CHECKCAST, "java/lang/Boolean");
+                                mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/lang/Boolean", "booleanValue", "()Z", false); }
+                            case Type.BYTE    -> { mv.visitTypeInsn(Opcodes.CHECKCAST, "java/lang/Byte");
+                                mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/lang/Byte", "byteValue", "()B", false); }
+                            case Type.CHAR    -> { mv.visitTypeInsn(Opcodes.CHECKCAST, "java/lang/Character");
+                                mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/lang/Character", "charValue", "()C", false); }
+                            case Type.SHORT   -> { mv.visitTypeInsn(Opcodes.CHECKCAST, "java/lang/Short");
+                                mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/lang/Short", "shortValue", "()S", false); }
+                            case Type.INT     -> { mv.visitTypeInsn(Opcodes.CHECKCAST, "java/lang/Integer");
+                                mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/lang/Integer", "intValue", "()I", false); }
+                            case Type.LONG    -> { mv.visitTypeInsn(Opcodes.CHECKCAST, "java/lang/Long");
+                                mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/lang/Long", "longValue", "()J", false); }
+                            case Type.FLOAT   -> { mv.visitTypeInsn(Opcodes.CHECKCAST, "java/lang/Float");
+                                mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/lang/Float", "floatValue", "()F", false); }
+                            case Type.DOUBLE  -> { mv.visitTypeInsn(Opcodes.CHECKCAST, "java/lang/Double");
+                                mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/lang/Double", "doubleValue", "()D", false); }
+                            default           ->   mv.visitTypeInsn(Opcodes.CHECKCAST, returnType.getInternalName());
+                        }
                     }
 
                     private void box(Type type) {

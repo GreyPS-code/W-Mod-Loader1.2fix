@@ -9,13 +9,11 @@ import net.minecraft.world.level.Level;
 
 public class PlayerGameModeChangeEvent extends Event {
     private final ServerPlayer player;
-    private final GameType gameType;
-    private GameType previousGameModeForPlayer;
+    private GameType gameType;
 
-    public PlayerGameModeChangeEvent(ServerPlayer player, GameType gameType, GameType previousGameModeForPlayer) {
+    public PlayerGameModeChangeEvent(ServerPlayer player, GameType gameType) {
         this.player = player;
         this.gameType = gameType;
-        this.previousGameModeForPlayer = previousGameModeForPlayer;
     }
 
     @Override
@@ -24,15 +22,11 @@ public class PlayerGameModeChangeEvent extends Event {
     }
 
     public void setGameType(GameType gameType) {
-        this.previousGameModeForPlayer = gameType;
+        this.gameType = gameType;
     }
 
     public GameType getGameType() {
         return gameType;
-    }
-
-    public GameType getPreviousGameModeForPlayer() {
-        return previousGameModeForPlayer;
     }
 
     public ServerPlayer getPlayer() {

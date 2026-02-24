@@ -1,7 +1,7 @@
 package com.wzz.w_loader.asm;
 
-import com.wzz.w_loader.internal.library.objectweb.asm.ClassReader;
-import com.wzz.w_loader.internal.library.objectweb.asm.ClassWriter;
+import com.wzz.w_loader.api.asm.ClassReader;
+import com.wzz.w_loader.api.asm.ClassWriter;
 
 import java.util.HashSet;
 import java.util.Set;

@@ -4,7 +4,7 @@ plugins {
 }
 
 group = 'com.wzz.w_loder'
-version = '1.1'
+version = '1.2'
 
 repositories {
     mavenCentral()
@@ -56,6 +56,187 @@ javadoc {
     options.encoding = 'UTF-8'
 }
 
+tasks.register('runMinecraft', JavaExec) {
+    dependsOn jar
+    doFirst {
+        def jarFile = file("build/libs/${project.name}-${project.version}.jar")
+        if (jarFile.exists()) {
+            def modsDir = file('mods')
+            if (!modsDir.exists()) {
+                modsDir.mkdirs()
+            }
+            copy {
+                from jarFile
+                into modsDir
+            }
+        } else {
+            println "错误: 找不到 jar 文件: ${jarFile}"
+        }
+    }
+    jvmArgs "-Dfile.encoding=UTF-8"
+    jvmArgs "-Dsun.stdout.encoding=UTF-8"
+    jvmArgs "-Dsun.stderr.encoding=UTF-8"
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+
+    // 清空 classpath
+    classpath = files()
+    def getLatestVersion = { basePath, groupPath, artifact ->
+        def artifactDir = file("$basePath/$groupPath/$artifact")
+        if (!artifactDir.exists()) return null
+        def versions = artifactDir.listFiles({ File f -> f.isDirectory() } as FileFilter)
+        if (!versions || versions.length == 0) return null
+        versions = versions.sort { a, b ->
+            try {
+                def aNumbers = a.name.split(/[.-]/).findAll { it.isNumber() }.collect { it as int }
+                def bNumbers = b.name.split(/[.-]/).findAll { it.isNumber() }.collect { it as int }
+                for (int i = 0; i < Math.min(aNumbers.size(), bNumbers.size()); i++) {
+                    if (aNumbers[i] != bNumbers[i]) return bNumbers[i] <=> aNumbers[i]
+                }
+                return bNumbers.size() <=> aNumbers.size()
+            } catch (Exception e) {
+                return b.name <=> a.name
+            }
+        }
+        return versions[0]
+    }
+    def getLatestJar = { basePath, groupPath, artifact ->
+        def latestVersionDir = getLatestVersion(basePath, groupPath, artifact)
+        if (!latestVersionDir) return null
+        def jarFiles = fileTree(dir: latestVersionDir, include: '*.jar').files
+        // 优先选择不包含 '-natives' 的主 jar
+        def mainJar = jarFiles.find { !it.name.contains('-natives') }
+        if (mainJar) return mainJar
+        // 否则返回第一个
+        return jarFiles.isEmpty() ? null : jarFiles.first()
+    }
+    def librariesBase = 'D:\\360安全浏览器下载\\Snapshot 2.2.1\\.minecraft\\libraries'
+    def coreDeps = [
+            [group: 'org/apache/logging/log4j', artifact: 'log4j-api'],
+            [group: 'org/apache/logging/log4j', artifact: 'log4j-core'],
+            [group: 'org/apache/logging/log4j', artifact: 'log4j-slf4j2-impl'],
+            [group: 'org/slf4j', artifact: 'slf4j-api'],
+            [group: 'com/mojang', artifact: 'datafixerupper'],
+            [group: 'com/mojang', artifact: 'authlib'],
+            [group: 'org/lwjgl', artifact: 'lwjgl'],
+            [group: 'org/lwjgl', artifact: 'lwjgl-glfw'],
+            [group: 'org/lwjgl', artifact: 'lwjgl-opengl'],
+            [group: 'org/lwjgl', artifact: 'lwjgl-stb'],
+            [group: 'org/lwjgl', artifact: 'lwjgl-tinyfd'],
+            [group: 'org/lwjgl', artifact: 'lwjgl-jemalloc'],
+            [group: 'org/lwjgl', artifact: 'lwjgl-openal'],
+            [group: 'org/lwjgl', artifact: 'lwjgl-freetype']
+    ]
+    def excludeArtifacts = [
+            'log4j-slf4j18-impl',
+            'slf4j-simple',
+            'slf4j-jdk14',
+            'slf4j-log4j12',
+            'netty-buffer',
+            'netty-codec',
+            'netty-common',
+            'netty-handler',
+            'netty-resolver',
+            'netty-transport',
+            'netty-transport-classes-epoll',
+            'netty-transport-native-epoll',
+            'netty-transport-native-unix-common',
+            'netty-all',
+            'netty',
+            'asm-all'
+    ]
+    classpath = classpath + files('library/26.1-snapshot-8.jar')
+    def loadedCoreArtifacts = []
+    coreDeps.each { dep ->
+        def jarFile = getLatestJar(librariesBase, dep.group, dep.artifact)
+        if (jarFile) {
+            classpath = classpath + files(jarFile)
+            loadedCoreArtifacts.add(dep.artifact)
+        } else {
+            println "${dep.artifact}: 未找到"
+        }
+    }
+    def nettyVersion = '4.2.7.Final'
+    def nettyGroup = 'io/netty'
+    def nettyModules = [
+            'netty-buffer',
+            'netty-codec-base',
+            'netty-codec-http',
+            'netty-common',
+            'netty-handler',
+            'netty-resolver',
+            'netty-transport',
+            "netty-transport-classes-epoll",
+            "netty-transport-native-unix-common",
+            "netty-transport-classes-kqueue"
+    ]
+    nettyModules.each { module ->
+        def jarPath = "$librariesBase/$nettyGroup/$module/$nettyVersion/${module}-${nettyVersion}.jar"
+        def jarFile = file(jarPath)
+        if (jarFile.exists()) {
+            classpath = classpath + files(jarFile)
+        } else {
+            println "$module: 未找到 $jarPath"
+        }
+    }
+    def lwjglArtifacts = coreDeps.findAll { it.group == 'org/lwjgl' }.collect { it.artifact }
+    lwjglArtifacts.each { artifact ->
+        def groupPath = 'org/lwjgl'
+        def latestVersionDir = getLatestVersion(librariesBase, groupPath, artifact)
+        if (latestVersionDir) {
+            def jarFiles = fileTree(dir: latestVersionDir, include: '*.jar').files
+            def nativeJars = jarFiles.findAll { it.name.contains('-natives-windows') }
+            nativeJars.each { nativeJar ->
+                if (!classpath.files.contains(nativeJar)) {
+                    classpath = classpath + files(nativeJar)
+                }
+            }
+        }
+    }
+    int otherCount = 0
+    def addedPaths = classpath.files.collect { it.path }
+    file(librariesBase).eachDirRecurse { dir ->
+        def versionDirs = dir.listFiles({ File f -> f.isDirectory() } as FileFilter)
+        if (versionDirs && versionDirs.any { it.name.matches(/^[0-9.]+(?:-.*)?$/) }) {
+            def artifactName = dir.name
+            // 跳过已加载的核心依赖
+            if (loadedCoreArtifacts.contains(artifactName)) return
+            // 跳过排除列表
+            if (excludeArtifacts.any { artifactName.contains(it) }) return
+            def relativePath = dir.path.substring(librariesBase.length() + 1).replace('\\', '/')
+            def pathSegments = relativePath.split('/')
+            def artifactSeg = pathSegments[-1]
+            if (artifactSeg != artifactName) artifactName = artifactSeg
+            def group = pathSegments[0..-2].join('/')
+
+            def jarFile = getLatestJar(librariesBase, group, artifactName)
+            if (jarFile && !addedPaths.contains(jarFile.path)) {
+                classpath = classpath + files(jarFile)
+                addedPaths.add(jarFile.path)
+                otherCount++
+            }
+        }
+    }
+    mainClass = 'net.minecraft.client.main.Main'
+    def agentJarPath = file("build/libs/${project.name}-${project.version}.jar")
+    if (agentJarPath.exists()) {
+        jvmArgs "-javaagent:${agentJarPath}"
+    } else {
+        def agentJar = fileTree(dir: 'build/libs', include: '*.jar').files.first()
+        if (agentJar) {
+            jvmArgs "-javaagent:${agentJar}"
+        }
+    }
+    jvmArgs "-Djava.library.path=D:\\360安全浏览器下载\\Snapshot 2.2.1\\.minecraft\\versions\\26.1\\26.1-natives"
+    args '--username=TestPlayer',
+            '--accessToken=0',
+            '--version=26.1',
+            '--gameDir=./run',
+            '--assetsDir=D:\\360安全浏览器下载\\Snapshot 2.2.1\\.minecraft\\assets',
+            '--assetIndex=30',
+            '--width=854',
+            '--height=480'
+}
+
 jar {
     manifest {
         attributes(
@@ -75,10 +256,10 @@ jar {
 
 dependencies {
     implementation files("library/26.1-snapshot-8.jar")
-    implementation files("library/brigadier-1.3.10.jar")
-    implementation files("library/authlib-7.0.61.jar")
+    compileOnly files("library/brigadier-1.3.10.jar")
+    compileOnly files("library/authlib-7.0.61.jar")
 //    implementation 'org.ow2.asm:asm:9.8'
 //    implementation 'org.ow2.asm:asm-commons:9.8'
-    implementation 'com.mojang:datafixerupper:6.0.8'
-    implementation 'org.joml:joml:1.10.8'
+    compileOnly('com.mojang:datafixerupper:6.0.8')
+    compileOnly('org.joml:joml:1.10.8')
 }

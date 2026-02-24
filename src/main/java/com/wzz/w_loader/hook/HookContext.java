@@ -14,6 +14,8 @@ public class HookContext {
     private final Object[] args;
     private final Object self;
     private final List<Event> events = new ArrayList<>();
+    private Object returnValue;
+    private boolean returnValueSet = false;
 
     public HookContext(Object self, Object[] args) {
         this.self = self;
@@ -30,6 +32,15 @@ public class HookContext {
     public void setArg(int slot, Object value) {
         args[slot - 1] = value;
     }
+
+    public void setReturnValue(Object value) {
+        this.returnValue = value;
+        this.returnValueSet = true;
+    }
+
+    public Object getReturnValue() { return returnValue; }
+
+    public boolean isReturnValueSet() { return returnValueSet; }
 
     public boolean isCancelled() {
         for (Event e : events) {

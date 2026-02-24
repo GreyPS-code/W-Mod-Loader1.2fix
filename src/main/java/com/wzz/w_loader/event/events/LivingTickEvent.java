@@ -4,14 +4,14 @@ import com.wzz.w_loader.event.Event;
 import net.minecraft.world.entity.LivingEntity;
 
 public class LivingTickEvent extends Event {
-    private final Object entity;
+    private final LivingEntity entity;
 
-    public LivingTickEvent(Object entity) {
+    public LivingTickEvent(LivingEntity entity) {
         this.entity = entity;
     }
 
     @Override
     public boolean isCancellable() { return true; }
 
-    public LivingEntity getEntity() { return (LivingEntity) entity; }
+    public LivingEntity getEntity() { return entity; }
 }

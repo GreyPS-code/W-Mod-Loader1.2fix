@@ -5,11 +5,11 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
 
 public class LivingHurtEvent extends Event {
-    private final Object entity;
-    private final Object damageSource;
+    private final LivingEntity entity;
+    private final DamageSource damageSource;
     private float damage;
 
-    public LivingHurtEvent(Object entity, Object damageSource, float damage) {
+    public LivingHurtEvent(LivingEntity entity, DamageSource damageSource, float damage) {
         this.entity = entity;
         this.damageSource = damageSource;
         this.damage = damage;
@@ -18,8 +18,8 @@ public class LivingHurtEvent extends Event {
     @Override
     public boolean isCancellable() { return true; }
 
-    public LivingEntity getEntity() { return (LivingEntity) entity; }
-    public DamageSource getDamageSource() { return (DamageSource) damageSource; }
+    public LivingEntity getEntity() { return entity; }
+    public DamageSource getDamageSource() { return damageSource; }
     public float getDamage() { return damage; }
     public void setDamage(float damage) { this.damage = damage; }
 }

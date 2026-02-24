@@ -5,10 +5,10 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
 
 public class LivingSwingEvent extends Event {
-    private final Object entity;
+    private final LivingEntity entity;
     private boolean sendToSwingingEntity;
 
-    public LivingSwingEvent(Object entity, boolean sendToSwingingEntity) {
+    public LivingSwingEvent(LivingEntity entity, boolean sendToSwingingEntity) {
         this.entity = entity;
         this.sendToSwingingEntity = sendToSwingingEntity;
     }
@@ -16,7 +16,7 @@ public class LivingSwingEvent extends Event {
     @Override
     public boolean isCancellable() { return true; }
 
-    public LivingEntity getEntity() { return (LivingEntity) entity; }
+    public LivingEntity getEntity() { return entity; }
 
     public boolean isSendToSwingingEntity() {
         return sendToSwingingEntity;

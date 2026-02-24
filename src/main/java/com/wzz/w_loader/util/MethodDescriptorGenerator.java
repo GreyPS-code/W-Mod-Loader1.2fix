@@ -1,6 +1,6 @@
 package com.wzz.w_loader.util;
 
-import com.wzz.w_loader.internal.library.objectweb.asm.*;
+import com.wzz.w_loader.api.asm.*;
 
 import java.io.IOException;
 import java.io.InputStream;

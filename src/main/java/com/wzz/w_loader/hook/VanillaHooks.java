@@ -1,6 +1,5 @@
 package com.wzz.w_loader.hook;
 
-import com.wzz.w_loader.ModLoader;
 import com.wzz.w_loader.client.screens.widget.InfoTextWidget;
 import com.wzz.w_loader.event.EventBus;
 import com.wzz.w_loader.event.events.*;
@@ -21,6 +20,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ExplosionDamageCalculator;
 import net.minecraft.world.level.GameType;
@@ -41,7 +42,6 @@ public class VanillaHooks {
             method = "runServer"
     )
     public static void onServerStart(HookContext ctx) {
-        ModLoader.onMinecraftInit();
         EventBus.INSTANCE.post(new ServerStartingEvent(ctx.getSelf()));
     }
 
@@ -101,8 +101,8 @@ public class VanillaHooks {
             descriptor = "(Lnet/minecraft/core/BlockPos;)Z"
     )
     public static void onBlockBreak(HookContext ctx) {
-        Object player   = ReflectUtil.getField(ctx.getSelf(), "player");
-        Object blockPos = ctx.getArg(1);
+        Player player   = ReflectUtil.getField(ctx.getSelf(), "player");
+        BlockPos blockPos = ctx.getArg(1);
         ctx.post(new BlockBreakEvent(player, blockPos, null));
     }
 
@@ -189,9 +189,7 @@ public class VanillaHooks {
             descriptor = "(Lnet/minecraft/world/damagesource/DamageSource;)V"
     )
     public static void onLivingDie(HookContext ctx) {
-        Object entity = ctx.getSelf();
-        Object source = ctx.getArg(1);
-        ctx.post(new LivingDeathEvent(entity, source));
+        ctx.post(new LivingDeathEvent(ctx.getSelf(), ctx.getArg(1)));
     }
 
     @Hook(
@@ -498,18 +496,16 @@ public class VanillaHooks {
     }
 
     @Hook(
-            cls = "net/minecraft/server/level/ServerPlayerGameMode",
-            method = "setGameModeForPlayer",
-            descriptor = "(Lnet/minecraft/world/level/GameType;Lnet/minecraft/world/level/GameType;)V"
+            cls = "net/minecraft/server/level/ServerPlayer",
+            method = "setGameMode",
+            descriptor = "(Lnet/minecraft/world/level/GameType;)Z"
     )
-    public static void onSetGameModeForPlayer(HookContext ctx) {
+    public static void onChangeGameModeForPlayer(HookContext ctx) {
         GameType gameType = ctx.getArg(1);
-        GameType previousGameModeForPlayer = ctx.getArg(2);
-        PlayerGameModeChangeEvent event = new PlayerGameModeChangeEvent(ReflectUtil.getField(ctx.getSelf(), "player"),
-                gameType, previousGameModeForPlayer);
+        PlayerGameModeChangeEvent event = new PlayerGameModeChangeEvent(ctx.getSelf(), gameType);
         ctx.post(event);
-        if (event.getPreviousGameModeForPlayer() != previousGameModeForPlayer) {
-            ctx.setArg(2, event.getPreviousGameModeForPlayer());
+        if (event.getGameType() != gameType) {
+            ctx.setArg(1, event.getGameType());
         }
     }
 
@@ -670,6 +666,262 @@ public class VanillaHooks {
             if (explosionEvent.isFireModified()) {
                 ctx.setArg(8, explosionEvent.isModifiedFire());
             }
+        }
+    }
+
+    @Hook(
+            cls = "net/minecraft/client/gui/Gui",
+            method = "render",
+            descriptor = "(Lnet/minecraft/client/gui/GuiGraphics;Lnet/minecraft/client/DeltaTracker;)V"
+    )
+    public static void onGuiRenderPre(HookContext ctx) {
+        GuiRenderEvent.Pre guiRenderEvent = new GuiRenderEvent.Pre(ctx.getSelf(), ctx.getArg(1), ctx.getArg(2));
+        ctx.post(guiRenderEvent);
+    }
+
+    @Hook(
+            cls = "net/minecraft/client/gui/Gui",
+            method = "render",
+            descriptor = "(Lnet/minecraft/client/gui/GuiGraphics;Lnet/minecraft/client/DeltaTracker;)V",
+            at = HookPoint.Position.TAIL
+    )
+    public static void onGuiRenderPost(HookContext ctx) {
+        GuiRenderEvent.Post guiRenderEvent = new GuiRenderEvent.Post(ctx.getSelf(), ctx.getArg(1), ctx.getArg(2));
+        EventBus.INSTANCE.post(guiRenderEvent);
+    }
+
+    @Hook(
+            cls = "net/minecraft/world/entity/LivingEntity",
+            method = "jumpFromGround",
+            descriptor = "()V"
+    )
+    public static void onLivingJumpFromGround(HookContext ctx) {
+        ctx.post(new LivingJumpEvent(ctx.getSelf(),
+                ReflectUtil.invoke(ctx.getSelf(), "getJumpPower"), LivingJumpEvent.JumpMode.JUMP_FORM_GROUND, null, 0));
+    }
+
+    @Hook(
+            cls = "net/minecraft/world/entity/LivingEntity",
+            method = "jumpInLiquid",
+            descriptor = "(Lnet/minecraft/tags/TagKey;)V"
+    )
+    public static void onLivingJumpInLiquid(HookContext ctx) {
+        ctx.post(new LivingJumpEvent(ctx.getSelf(),
+                ReflectUtil.invoke(ctx.getSelf(), "getJumpPower"), LivingJumpEvent.JumpMode.JUMP_IN_LIQUID, ctx.getArg(1), 0));
+    }
+
+    @Hook(
+            cls = "net/minecraft/world/entity/LivingEntity",
+            method = "jumpOutOfFluid",
+            descriptor = "(D)V"
+    )
+    public static void onLivingJumpOutOfFluid(HookContext ctx) {
+        ctx.post(new LivingJumpEvent(ctx.getSelf(),
+                ReflectUtil.invoke(ctx.getSelf(), "getJumpPower"), LivingJumpEvent.JumpMode.JUMP_OUT_OF_LIQUID, null, ctx.getArg(1)));
+    }
+
+    @Hook(
+            cls = "net/minecraft/world/entity/LivingEntity",
+            method = "doHurtEquipment",
+            descriptor = "(Lnet/minecraft/world/damagesource/DamageSource;F[Lnet/minecraft/world/entity/EquipmentSlot;)V"
+    )
+    public static void onLivingDoHurtEquipment(HookContext ctx) {
+        DamageSource damageSource = ctx.getArg(1);
+        float value = ctx.getArg(2);
+        LivingHurtEquipmentEvent event = new LivingHurtEquipmentEvent(ctx.getSelf(), value, damageSource, ctx.getArg(3));
+        ctx.post(event);
+        if (value != event.getValue())
+            ctx.setArg(2, event.getValue());
+        if (damageSource != event.getDamageSource())
+            ctx.setArg(1, event.getDamageSource());
+    }
+
+    @Hook(
+            cls = "net/minecraft/world/entity/LivingEntity",
+            method = "causeFallDamage",
+            descriptor = "(DFLnet/minecraft/world/damagesource/DamageSource;)Z"
+    )
+    public static void onLivingCauseFallDamage(HookContext ctx) {
+        double distance = ctx.getArg(1);
+        float damageModifier = ctx.getArg(2);
+        DamageSource damageSource = ctx.getArg(3);
+        LivingFallEvent event = new LivingFallEvent(ctx.getSelf(), distance, damageModifier, damageSource);
+        ctx.post(event);
+        if (distance != event.getDistance())
+            ctx.setArg(1, event.getDistance());
+        if (damageModifier != event.getDamageModifier())
+            ctx.setArg(2, event.getDamageModifier());
+        if (damageSource != event.getDamageSource())
+            ctx.setArg(3, event.getDamageSource());
+    }
+
+    @Hook(
+            cls = "net/minecraft/world/entity/item/ItemEntity",
+            method = "playerTouch",
+            descriptor = "(Lnet/minecraft/world/entity/player/Player;)V"
+    )
+    public static void onPlayerTouch(HookContext ctx) {
+        ctx.post(new ItemEntityTouchEvent(ctx.getSelf(), ctx.getArg(1)));
+    }
+
+    @Hook(
+            cls = "net/minecraft/world/entity/LivingEntity",
+            method = "knockback",
+            descriptor = "(DDD)V"
+    )
+    public static void onLivingKnockBack(HookContext ctx) {
+        double power = ctx.getArg(1);
+        double xd = ctx.getArg(2);
+        double zd = ctx.getArg(3);
+        LivingKnockBackEvent event = new LivingKnockBackEvent(ctx.getSelf(), power, xd, zd);
+        ctx.post(event);
+        if (power != event.getPower())
+            ctx.setArg(1, event.getPower());
+        if (xd != event.getXd())
+            ctx.setArg(2, event.getXd());
+        if (zd != event.getZd())
+            ctx.setArg(3, event.getZd());
+    }
+
+    @Hook(
+            cls = "net/minecraft/world/entity/LivingEntity",
+            method = "dropExperience",
+            descriptor = "(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/entity/Entity;)V"
+    )
+    public static void onLivingDropExperience(HookContext ctx) {
+        ServerLevel serverLevel = ctx.getArg(1);
+        Entity killer = ctx.getArg(2);
+        LivingDropExperienceEvent event = new LivingDropExperienceEvent(ctx.getSelf(), serverLevel, killer);
+        ctx.post(event);
+    }
+
+    @Hook(
+            cls = "net/minecraft/world/entity/LivingEntity",
+            method = "dropAllDeathLoot",
+            descriptor = "(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/damagesource/DamageSource;)V"
+    )
+    public static void onLivingDrop(HookContext ctx) {
+        ServerLevel serverLevel = ctx.getArg(1);
+        LivingDropEvent event = new LivingDropEvent(ctx.getSelf(), serverLevel, ctx.getArg(2));
+        ctx.post(event);
+    }
+
+    @Hook(
+            cls = "net/minecraft/world/entity/LivingEntity",
+            method = "removeEffect",
+            descriptor = "(Lnet/minecraft/core/Holder;)Z"
+    )
+    public static void onLivingRemoveEffect(HookContext ctx) {
+        LivingRemoveEffectEvent event = new LivingRemoveEffectEvent(ctx.getSelf(), ctx.getArg(1), false);
+        ctx.post(event);
+    }
+
+    @Hook(
+            cls = "net/minecraft/world/entity/LivingEntity",
+            method = "removeEffectNoUpdate",
+            descriptor = "(Lnet/minecraft/core/Holder;)Lnet/minecraft/world/effect/MobEffectInstance;"
+    )
+    public static void onLivingRemoveEffectNoUpdate(HookContext ctx) {
+        LivingRemoveEffectEvent event = new LivingRemoveEffectEvent(ctx.getSelf(), ctx.getArg(1), true);
+        EventBus.INSTANCE.post(event);
+    }
+
+    @Hook(
+            cls = "net/minecraft/world/entity/LivingEntity",
+            method = "addEffect",
+            descriptor = "(Lnet/minecraft/world/effect/MobEffectInstance;Lnet/minecraft/world/entity/Entity;)Z"
+    )
+    public static void onLivingAddEffect(HookContext ctx) {
+        LivingAddEffectEvent event = new LivingAddEffectEvent(ctx.getSelf(), ctx.getArg(1), ctx.getArg(2), false);
+        ctx.post(event);
+    }
+
+    @Hook(
+            cls = "net/minecraft/world/entity/LivingEntity",
+            method = "forceAddEffect",
+            descriptor = "(Lnet/minecraft/world/effect/MobEffectInstance;Lnet/minecraft/world/entity/Entity;)V"
+    )
+    public static void onLivingForceAddEffect(HookContext ctx) {
+        LivingAddEffectEvent event = new LivingAddEffectEvent(ctx.getSelf(), ctx.getArg(1), ctx.getArg(2), true);
+        ctx.post(event);
+    }
+
+    @Hook(
+            cls = "net/minecraft/world/entity/LivingEntity",
+            method = "getHealth",
+            descriptor = "()F",
+            at = HookPoint.Position.TAIL
+    )
+    public static void onGetHealth(HookContext ctx) {
+        LivingEntity entity = ctx.getSelf();
+        LivingGetHealthEvent event = new LivingGetHealthEvent(entity);
+        ctx.post(event);
+        if (event.getValue() != -1f) {
+            ctx.setReturnValue(event.getValue());
+        }
+    }
+
+    @Hook(
+            cls = "net/minecraft/world/entity/Entity",
+            method = "push",
+            descriptor = "(Lnet/minecraft/world/entity/Entity;)V"
+    )
+    public static void onEntityPush(HookContext ctx) {
+        EntityPushEvent event = new EntityPushEvent(ctx.getSelf(), ctx.getArg(1));
+        ctx.post(event);
+    }
+
+    @Hook(
+            cls = "net/minecraft/world/entity/LivingEntity",
+            method = "pushEntities",
+            descriptor = "()V"
+    )
+    public static void onLivingPushEntities(HookContext ctx) {
+        LivingPushEntitiesEvent event = new LivingPushEntitiesEvent(ctx.getSelf());
+        ctx.post(event);
+    }
+
+    @Hook(
+            cls = "net/minecraft/world/entity/LivingEntity",
+            method = "startUsingItem",
+            descriptor = "(Lnet/minecraft/world/InteractionHand;)V"
+    )
+    public static void onLivingStartUsingItem(HookContext ctx) {
+        LivingEntity livingEntity = ctx.getSelf();
+        InteractionHand interactionHand = ctx.getArg(1);
+        LivingStartUsingItemEvent event = new LivingStartUsingItemEvent(livingEntity, interactionHand, livingEntity.getItemInHand(interactionHand));
+        ctx.post(event);
+    }
+
+    @Hook(
+            cls = "net/minecraft/world/entity/Entity",
+            method = "setPosRaw",
+            descriptor = "(DDD)V"
+    )
+    public static void onEntitySetPosRaw(HookContext ctx) {
+        double x = ctx.getArg(1);
+        double y = ctx.getArg(2);
+        double z = ctx.getArg(3);
+        EntitySetPosEvent event = new EntitySetPosEvent(ctx.getSelf(), x, y, z);
+        ctx.post(event);
+        if (event.isModify()) {
+            ctx.setArg(1, event.getX());
+            ctx.setArg(2, event.getY());
+            ctx.setArg(3, event.getZ());
+        }
+    }
+
+    @Hook(
+            cls = "net/minecraft/world/entity/Entity",
+            method = "setLevel",
+            descriptor = "(Lnet/minecraft/world/level/Level;)V"
+    )
+    public static void onEntitySetLevel(HookContext ctx) {
+        Level level = ctx.getArg(1);
+        EntitySetLevelEvent event = new EntitySetLevelEvent(ctx.getSelf(), level);
+        ctx.post(event);
+        if (level != event.getNewLevel()) {
+            ctx.setArg(1, event.getNewLevel());
         }
     }
 }

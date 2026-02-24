@@ -4,10 +4,10 @@ import com.wzz.w_loader.event.Event;
 import net.minecraft.world.entity.Entity;
 
 public class EntityRemoveEvent extends Event {
-    private final Object entity;
+    private final Entity entity;
     private Entity.RemovalReason removalReason;
 
-    public EntityRemoveEvent(Object entity, Entity.RemovalReason removalReason) {
+    public EntityRemoveEvent(Entity entity, Entity.RemovalReason removalReason) {
         this.entity = entity;
         this.removalReason = removalReason;
     }
@@ -15,7 +15,7 @@ public class EntityRemoveEvent extends Event {
     @Override
     public boolean isCancellable() { return true; }
 
-    public Entity getEntity() { return (Entity) entity; }
+    public Entity getEntity() { return entity; }
 
     public Entity.RemovalReason getRemovalReason() {
         return removalReason;

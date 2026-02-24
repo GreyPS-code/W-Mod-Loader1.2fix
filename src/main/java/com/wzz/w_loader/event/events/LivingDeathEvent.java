@@ -5,10 +5,10 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
 
 public class LivingDeathEvent extends Event {
-    private final Object entity;
-    private final Object damageSource;
+    private final LivingEntity entity;
+    private final DamageSource damageSource;
 
-    public LivingDeathEvent(Object entity, Object damageSource) {
+    public LivingDeathEvent(LivingEntity entity, DamageSource damageSource) {
         this.entity = entity;
         this.damageSource = damageSource;
     }
@@ -16,6 +16,6 @@ public class LivingDeathEvent extends Event {
     @Override
     public boolean isCancellable() { return true; }
 
-    public LivingEntity getEntity()       { return (LivingEntity) entity; }
-    public DamageSource getDamageSource() { return (DamageSource) damageSource; }
+    public LivingEntity getEntity()       { return entity; }
+    public DamageSource getDamageSource() { return damageSource; }
 }
