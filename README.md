@@ -10,9 +10,9 @@
 
 使用 W Loader 需要在 Java 虚拟机参数填写 `-javaagent` 参数。
 
-例如，如果 Jar 路径为 `D:\Download\Snapshot 2.2.1\.minecraft\w_loader-1.1.jar`，你需要填写：
+例如，如果 Jar 路径为 `D:\Download\Snapshot 2.2.1\.minecraft\w_loader-1.2.jar`，你需要填写：
 ```bash
--javaagent:"D:\Download\Snapshot 2.2.1\.minecraft\w_loader-1.1.jar"
+-javaagent:"D:\Download\Snapshot 2.2.1\.minecraft\w_loader-1.2.jar"
 ```
 
 ### 安装模组
@@ -30,7 +30,7 @@
 ```gradle
 dependencies {
     implementation files("library/26.1-snapshot-8.jar") // Minecraft 本体 Jar
-    compileOnly 'com.wzz:w-loader-api:1.1'
+    compileOnly 'com.wzz:w-loader-api:1.2'
     implementation 'com.mojang:datafixerupper:6.0.8'
     implementation 'com.mojang:brigadier:1.3.10'
     implementation 'com.mojang:authlib:7.0.61'
