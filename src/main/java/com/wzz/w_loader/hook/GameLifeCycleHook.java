@@ -17,4 +17,12 @@ public class GameLifeCycleHook {
     public static Minecraft getMinecraft(){
         return minecraft;
     }
+    public static boolean isOnClientMainThread() {
+        Minecraft mc = getMinecraft();
+        return mc != null && mc.isSameThread();
+    }
+    public static boolean isOnServerMainThread() {
+        MinecraftServer server = getServer();
+        return server != null && server.isSameThread();
+    }
 }
