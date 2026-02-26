@@ -5,7 +5,9 @@ import com.wzz.w_loader.client.screens.widget.InfoTextWidget;
 import com.wzz.w_loader.event.EventBus;
 import com.wzz.w_loader.event.events.*;
 import com.wzz.w_loader.internal.CancelOnlyEvent;
+import com.wzz.w_loader.logger.WLogger;
 import com.wzz.w_loader.resource.ModRepositorySource;
+import com.wzz.w_loader.util.MainThreadScheduler;
 import com.wzz.w_loader.util.ReflectUtil;
 import com.wzz.w_loader.util.WModUtils;
 import net.minecraft.client.gui.Font;
@@ -296,6 +298,7 @@ public class VanillaHooks {
             at = HookPoint.Position.TAIL
     )
     public static void onServerTickEnd(HookContext ctx) {
+        MainThreadScheduler.flushPendingTasks();
         EventBus.INSTANCE.post(new ServerTickEvent(ctx.getSelf(), TickEvent.Phase.END));
     }
 
@@ -305,6 +308,7 @@ public class VanillaHooks {
             descriptor = "()V"
     )
     public static void onClientTick(HookContext ctx) {
+        MainThreadScheduler.flushPendingTasks();
         EventBus.INSTANCE.post(new ClientTickEvent(TickEvent.Phase.START));
     }
 
