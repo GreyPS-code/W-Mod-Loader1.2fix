@@ -8,7 +8,12 @@ import com.wzz.w_loader.logger.WLogger;
 import com.wzz.w_loader.registry.Registries;
 import com.wzz.w_loader.resource.ModResourceManager;
 import com.wzz.w_loader.resource.ModResourcePack;
+import com.wzz.w_loader.util.InstrumentationUtil;
+import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.packs.repository.PackRepository;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,7 +36,7 @@ public final class ModLoader {
      */
     public static void onBootstrap() {
         WLogger.info("[ModLoader] Bootstrap phase: loading mod classes...");
-
+        InstrumentationUtil.unlockUniverse();
         for (PendingMod pending : INSTANCE.pendingMods) {
             try {
                 String modId = pending.metadata().name != null
