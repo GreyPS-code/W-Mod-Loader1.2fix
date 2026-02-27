@@ -10,9 +10,8 @@ import com.wzz.w_loader.resource.ModResourceManager;
 import com.wzz.w_loader.resource.ModResourcePack;
 import com.wzz.w_loader.util.InstrumentationUtil;
 import net.minecraft.client.Minecraft;
-import net.minecraft.network.chat.Component;
-import net.minecraft.server.packs.repository.PackRepository;
 
+import javax.swing.*;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -51,7 +50,6 @@ public final class ModLoader {
                 WLogger.info("[ModLoader] Loaded: " + pending.metadata().name());
             } catch (Exception e) {
                 WLogger.error("[ModLoader] Failed: " + pending.metadata().name());
-                e.printStackTrace();
             }
         }
         ModResourceManager.INSTANCE.addPack(new ModResourcePack("w_loader", null, true, ModLoader.class));
