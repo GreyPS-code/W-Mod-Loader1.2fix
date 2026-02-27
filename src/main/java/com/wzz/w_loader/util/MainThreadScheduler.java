@@ -11,9 +11,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.FutureTask;
 
 public class MainThreadScheduler {
-    // 线程安全的客户端任务队列
     private static final Queue<Runnable> CLIENT_TASK_QUEUE = new ConcurrentLinkedQueue<>();
-    // 线程安全的服务端任务队列
     private static final Queue<Runnable> SERVER_TASK_QUEUE = new ConcurrentLinkedQueue<>();
 
     // ==================== 客户端主线程调度 ====================
@@ -26,10 +24,8 @@ public class MainThreadScheduler {
         }
 
         if (mc.isSameThread()) {
-            // 已在客户端主线程，直接执行
             runTaskSafely(task);
         } else {
-            // 提交到 MC 原生主线程队列
             mc.execute(() -> runTaskSafely(task));
         }
     }
@@ -59,10 +55,8 @@ public class MainThreadScheduler {
         }
 
         if (server.isSameThread()) {
-            // 已在服务端主线程，直接执行
             runTaskSafely(task);
         } else {
-            // 提交到 MC 原生服务端队列
             server.execute(() -> runTaskSafely(task));
         }
     }
